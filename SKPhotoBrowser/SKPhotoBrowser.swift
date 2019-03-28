@@ -537,7 +537,11 @@ internal extension SKPhotoBrowser {
                 alert.addAction(UIAlertAction.init(title: "暂不", style: .default, handler: nil))
                 alert.addAction(UIAlertAction.init(title: "开启", style: .cancel, handler: { (_) in
                     guard let url = URL.init(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) else { return }
-                    UIApplication.shared.open(url)
+                    if #available(iOS 10.0, *) {
+                        UIApplication.shared.open(url)
+                    } else {
+                        UIApplication.shared.openURL(url)
+                    }
                 }))
                 present(alert, animated: true, completion: nil)
             }
