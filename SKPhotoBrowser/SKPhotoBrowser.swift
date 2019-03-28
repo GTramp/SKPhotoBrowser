@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import Photos
 
 public let SKPHOTO_LOADING_DID_END_NOTIFICATION = "photoLoadingDidEndNotification"
 
@@ -27,11 +28,11 @@ open class SKPhotoBrowser: UIViewController {
     fileprivate var actionView: SKActionView!
     fileprivate(set) var paginationView: SKPaginationView!
     var toolbar: SKToolbar!
-
+    
     // actions
     fileprivate var activityViewController: UIActivityViewController!
     fileprivate var panGesture: UIPanGestureRecognizer?
-
+    
     // for status check property
     fileprivate var isEndAnimationByToolBar: Bool = true
     fileprivate var isViewActive: Bool = false
@@ -46,7 +47,7 @@ open class SKPhotoBrowser: UIViewController {
     
     // delegate
     open weak var delegate: SKPhotoBrowserDelegate?
-
+    
     // statusbar initial state
     private var statusbarHidden: Bool = UIApplication.shared.isStatusBarHidden
     
@@ -85,7 +86,7 @@ open class SKPhotoBrowser: UIViewController {
         animator.senderOriginImage = photos[currentPageIndex].underlyingImage
         animator.senderViewForAnimation = photos[currentPageIndex] as? UIView
     }
-
+    
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
@@ -109,7 +110,7 @@ open class SKPhotoBrowser: UIViewController {
         configureActionView()
         configurePaginationView()
         configureToolbar()
-
+        
         animator.willPresent(self)
     }
     
@@ -129,13 +130,13 @@ open class SKPhotoBrowser: UIViewController {
         isPerformingLayout = true
         // where did start
         delegate?.didShowPhotoAtIndex?(self, index: currentPageIndex)
-
+        
         // toolbar
         toolbar.frame = frameForToolbarAtOrientation()
         
         // action
         actionView.updateFrame(frame: view.frame)
-
+        
         // paging
         switch SKCaptionOptions.captionLocation {
         case .basic:
@@ -144,7 +145,7 @@ open class SKPhotoBrowser: UIViewController {
             paginationView.frame = frameForPaginationAtOrientation()
         }
         pagingScrollView.updateFrame(view.bounds, currentPageIndex: currentPageIndex)
-
+        
         isPerformingLayout = false
     }
     
@@ -189,7 +190,7 @@ open class SKPhotoBrowser: UIViewController {
     
     open func performLayout() {
         isPerformingLayout = true
-
+        
         // reset local cache
         pagingScrollView.reload()
         pagingScrollView.updateContentOffset(currentPageIndex)
@@ -294,7 +295,7 @@ public extension SKPhotoBrowser {
                 return
             }
             isEndAnimationByToolBar = false
-
+            
             let pageFrame = frameForPageAtIndex(index)
             pagingScrollView.jumpToPageAtIndex(pageFrame)
         }
@@ -458,7 +459,7 @@ internal extension SKPhotoBrowser {
                 // Continue Showing View
                 setNeedsStatusBarAppearanceUpdate()
                 view.backgroundColor = bgColor
-
+                
                 let velocityY: CGFloat = CGFloat(0.35) * sender.velocity(in: self.view).y
                 let finalX: CGFloat = firstX
                 let finalY: CGFloat = viewHalfHeight
@@ -473,7 +474,7 @@ internal extension SKPhotoBrowser {
             }
         }
     }
-   
+    
     @objc func actionButtonPressed(ignoreAndShare: Bool) {
         delegate?.willShowActionSheet?(currentPageIndex)
         
@@ -506,7 +507,34 @@ internal extension SKPhotoBrowser {
             }
             
         } else {
-            popupShare()
+            // 添加权限
+            switch PHPhotoLibrary.authorizationStatus() {
+            case .notDetermined:
+                PHPhotoLibrary.requestAuthorization {[unowned self] (status) in
+                    guard status == .authorized else { return }
+                    DispatchQueue.main.async {
+                        self.popupShare()
+                    }
+                }
+            case .authorized:
+                 popupShare()
+            default:
+                // 提示用户
+                let alert = UIAlertController.init(title: "开启权限", message: "开启权限，以便访问相册", preferredStyle: .alert)
+                if let color = SKPhotoBrowserOptions.AlertTintColor {
+                    alert.view.tintColor = color
+                }
+                alert.addAction(UIAlertAction.init(title: "暂不", style: .default, handler: nil))
+                alert.addAction(UIAlertAction.init(title: "开启", style: .cancel, handler: { (_) in
+                    guard let url = URL.init(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) else { return }
+                    if #available(iOS 10.0, *) {
+                        UIApplication.shared.open(url)
+                    } else {
+                        UIApplication.shared.openURL(url)
+                    }
+                }))
+                present(alert, animated: true, completion: nil)
+            }
         }
     }
     
@@ -546,14 +574,14 @@ private extension SKPhotoBrowser {
         pagingScrollView.delegate = self
         view.addSubview(pagingScrollView)
     }
-
+    
     func configureGestureControl() {
         guard !SKPhotoBrowserOptions.disableVerticalSwipe else { return }
         
         panGesture = UIPanGestureRecognizer(target: self, action: #selector(SKPhotoBrowser.panGestureRecognized(_:)))
         panGesture?.minimumNumberOfTouches = 1
         panGesture?.maximumNumberOfTouches = 1
-
+        
         if let panGesture = panGesture {
             view.addGestureRecognizer(panGesture)
         }
@@ -563,7 +591,7 @@ private extension SKPhotoBrowser {
         actionView = SKActionView(frame: view.frame, browser: self)
         view.addSubview(actionView)
     }
-
+    
     func configurePaginationView() {
         paginationView = SKPaginationView(frame: view.frame, browser: self)
         view.addSubview(paginationView)
@@ -573,14 +601,14 @@ private extension SKPhotoBrowser {
         toolbar = SKToolbar(frame: frameForToolbarAtOrientation(), browser: self)
         view.addSubview(toolbar)
     }
-
+    
     func setControlsHidden(_ hidden: Bool, animated: Bool, permanent: Bool) {
         // timer update
         cancelControlHiding()
         
         // scroll animation
         pagingScrollView.setControlsHidden(hidden: hidden)
-
+        
         // paging animation
         paginationView.setControlsHidden(hidden: hidden)
         

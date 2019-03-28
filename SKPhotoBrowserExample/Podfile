@@ -1,5 +1,7 @@
 platform :ios, '9.0'
 use_frameworks!
+# Uncomment the next line to inhibit all warnings for your project
+inhibit_all_warnings!
 
 target "SKPhotoBrowserExample" do
     pod 'SDWebImage', '~>3.8'

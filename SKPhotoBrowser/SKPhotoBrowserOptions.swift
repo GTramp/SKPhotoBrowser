@@ -47,6 +47,9 @@ public struct SKPhotoBrowserOptions {
 
     /// Provide custom session configuration (eg. for headers, etc.)
     public static var sessionConfiguration: URLSessionConfiguration = .default
+    
+    /// UIAlertViewController TintColor
+    public static var AlertTintColor: UIColor? 
 }
 
 public struct SKButtonOptions {
