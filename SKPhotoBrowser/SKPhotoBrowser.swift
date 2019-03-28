@@ -69,7 +69,7 @@ open class SKPhotoBrowser: UIViewController {
         self.init(photos: photos, initialPageIndex: 0)
     }
     
-    @available(*, deprecated )
+    @available(*, deprecated)
     public convenience init(originImage: UIImage, photos: [SKPhotoProtocol], animatedFromView: UIView) {
         self.init(nibName: nil, bundle: nil)
         self.photos = photos
@@ -255,7 +255,7 @@ open class SKPhotoBrowser: UIViewController {
         } else {
             activityViewController.modalPresentationStyle = .popover
             let popover: UIPopoverPresentationController! = activityViewController.popoverPresentationController
-            popover.barButtonItem = toolbar.toolActionButton
+            popover.barButtonItem = toolbar.toolItem
             present(activityViewController, animated: true, completion: nil)
         }
     }
@@ -475,6 +475,16 @@ internal extension SKPhotoBrowser {
         }
     }
     
+    /// 渲染原图
+    ///
+    /// - Parameter sender: UIBarButtonItem
+    @objc func displayOriginImageActionHandler(_ sender: UIBarButtonItem) {
+        delegate?.browser?(self, displayOriginImageWith: currentPageIndex)
+    }
+    
+    /// tool action invoke
+    ///
+    /// - Parameter ignoreAndShare: gnoreAndShare: Bool
     @objc func actionButtonPressed(ignoreAndShare: Bool) {
         delegate?.willShowActionSheet?(currentPageIndex)
         
@@ -499,7 +509,7 @@ internal extension SKPhotoBrowser {
                 
                 if let popoverController = actionSheetController.popoverPresentationController {
                     popoverController.sourceView = self.view
-                    popoverController.barButtonItem = toolbar.toolActionButton
+                    popoverController.barButtonItem = toolbar.toolItem
                 }
                 
                 present(actionSheetController, animated: true, completion: { () -> Void in
@@ -507,31 +517,27 @@ internal extension SKPhotoBrowser {
             }
             
         } else {
-            // 添加权限
+            // 获取相册权限
             switch PHPhotoLibrary.authorizationStatus() {
             case .notDetermined:
-                PHPhotoLibrary.requestAuthorization {[unowned self] (status) in
+                PHPhotoLibrary.requestAuthorization { (status) in
                     guard status == .authorized else { return }
                     DispatchQueue.main.async {
                         self.popupShare()
                     }
                 }
             case .authorized:
-                 popupShare()
+                popupShare()
             default:
-                // 提示用户
+                // 提示用户开启权限
                 let alert = UIAlertController.init(title: "开启权限", message: "开启权限，以便访问相册", preferredStyle: .alert)
-                if let color = SKPhotoBrowserOptions.AlertTintColor {
-                    alert.view.tintColor = color
+                if let tintColor = SKPhotoBrowserOptions.AlertTintColor {
+                    alert.view.tintColor = tintColor
                 }
                 alert.addAction(UIAlertAction.init(title: "暂不", style: .default, handler: nil))
                 alert.addAction(UIAlertAction.init(title: "开启", style: .cancel, handler: { (_) in
                     guard let url = URL.init(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) else { return }
-                    if #available(iOS 10.0, *) {
-                        UIApplication.shared.open(url)
-                    } else {
-                        UIApplication.shared.openURL(url)
-                    }
+                    UIApplication.shared.open(url)
                 }))
                 present(alert, animated: true, completion: nil)
             }
